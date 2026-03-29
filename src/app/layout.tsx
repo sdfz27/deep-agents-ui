@@ -1,9 +1,9 @@
-import { Inter } from "next/font/google";
+//import { Inter } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+//const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
   children,
@@ -16,7 +16,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className={inter.className}
+        className="font-sans"
         suppressHydrationWarning
       >
         <NuqsAdapter>{children}</NuqsAdapter>
