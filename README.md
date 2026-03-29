@@ -70,15 +70,34 @@ You can click on any file to view it.
 
 <img width="2039" height="1495" alt="Screenshot 2025-11-17 at 1 11 40 PM" src="https://github.com/user-attachments/assets/9883677f-e365-428d-b941-992bdbfa79dd" />
 
-### Optional: Environment Variables
+### Optional: Configuration file and environment variables
 
-You can optionally set environment variables instead of using the settings dialog:
+You can set the **app title** and **backend** (LangGraph deployment URL, assistant ID, and optional LangSmith API key) so users are not prompted on first load.
+
+#### Public config file (runtime)
+
+1. Copy `public/deep-agents-ui.config.example.json` to `public/deep-agents-ui.config.json`.
+2. Edit the JSON. To **skip the first-run configuration dialog**, set both `deploymentUrl` and `assistantId`.
+3. Optional fields:
+   - **`title`** — Shown in the page header, welcome screen, and browser tab title (default: `Deep Agent UI`).
+   - **`langsmithApiKey`** — Same role as in the settings dialog; omit or leave empty if not needed.
+
+The app fetches `/deep-agents-ui.config.json` when the page loads. The real file is listed in `.gitignore` so you can keep machine- or deployment-specific values out of git; the example file stays in the repo as a template.
+
+If a setting appears in **both** the JSON file and an environment variable (below), the **JSON file wins** for that field.
+
+#### Environment variables (build-time defaults)
+
+You can set Next.js `NEXT_PUBLIC_*` variables (for example in `.env.local` or your hosting provider). These apply when the corresponding key is not set in `deep-agents-ui.config.json`.
 
 ```env
+NEXT_PUBLIC_APP_TITLE="My Deep Agents"
+NEXT_PUBLIC_DEPLOYMENT_URL="http://127.0.0.1:2024"
+NEXT_PUBLIC_ASSISTANT_ID="research"
 NEXT_PUBLIC_LANGSMITH_API_KEY="lsv2_xxxx"
 ```
 
-**Note:** Settings configured in the UI take precedence over environment variables.
+**Note:** Values saved with **Settings** in the UI are stored in the browser (local storage) and take **precedence** over both the public config file and these environment variables on later visits.
 
 ### Usage
 
