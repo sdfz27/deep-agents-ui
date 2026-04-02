@@ -81,6 +81,7 @@ You can set the **app title** and **backend** (LangGraph deployment URL, assista
 3. Optional fields:
    - **`title`** — Shown in the page header, welcome screen, and browser tab title (default: `Deep Agent UI`).
    - **`langsmithApiKey`** — Same role as in the settings dialog; omit or leave empty if not needed.
+   - **`showThreadsHistory`** — When `false`, hides the **Threads** button and the threads sidebar (default: `true` when omitted). Set to `false` if you do not want users browsing past conversation threads in the UI.
 
 The app fetches `/deep-agents-ui.config.json` when the page loads. The real file is listed in `.gitignore` so you can keep machine- or deployment-specific values out of git; the example file stays in the repo as a template.
 
@@ -95,7 +96,10 @@ NEXT_PUBLIC_APP_TITLE="My Deep Agents"
 NEXT_PUBLIC_DEPLOYMENT_URL="http://127.0.0.1:2024"
 NEXT_PUBLIC_ASSISTANT_ID="research"
 NEXT_PUBLIC_LANGSMITH_API_KEY="lsv2_xxxx"
+NEXT_PUBLIC_SHOW_THREADS_HISTORY="true"
 ```
+
+Use `NEXT_PUBLIC_SHOW_THREADS_HISTORY` with `true` or `false` (or `1` / `0`) when `showThreadsHistory` is not set in `deep-agents-ui.config.json`. If the key is omitted in both places, threads history is shown.
 
 **Note:** Values saved with **Settings** in the UI are stored in the browser (local storage) and take **precedence** over both the public config file and these environment variables on later visits.
 

@@ -8,6 +8,7 @@ import {
   loadPublicAppConfig,
   mergeDeploymentConfig,
   resolveAppTitle,
+  resolveShowThreadsHistory,
   saveConfig,
   StandaloneConfig,
 } from "@/lib/config";
@@ -28,6 +29,7 @@ import { ChatInterface } from "@/app/components/ChatInterface";
 interface HomePageInnerProps {
   config: StandaloneConfig;
   appTitle: string;
+  showThreadsHistory: boolean;
   configDialogOpen: boolean;
   setConfigDialogOpen: (open: boolean) => void;
   handleSaveConfig: (config: StandaloneConfig) => void;
@@ -36,6 +38,7 @@ interface HomePageInnerProps {
 function HomePageInner({
   config,
   appTitle,
+  showThreadsHistory,
   configDialogOpen,
   setConfigDialogOpen,
   handleSaveConfig,
@@ -112,6 +115,12 @@ function HomePageInner({
     fetchAssistant();
   }, [fetchAssistant]);
 
+  useEffect(() => {
+    if (!showThreadsHistory) {
+      void setSidebar(null);
+    }
+  }, [showThreadsHistory, setSidebar]);
+
   return (
     <>
       <ConfigDialog
@@ -124,7 +133,7 @@ function HomePageInner({
         <header className="flex h-16 items-center justify-between border-b border-border px-6">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-semibold">{appTitle}</h1>
-            {!sidebar && (
+            {showThreadsHistory && !sidebar && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -172,7 +181,7 @@ function HomePageInner({
             direction="horizontal"
             autoSaveId="standalone-chat"
           >
-            {sidebar && (
+            {showThreadsHistory && sidebar && (
               <>
                 <ResizablePanel
                   id="thread-history"
@@ -216,6 +225,9 @@ function HomePageInner({
 function HomePageContent() {
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
   const [appTitle, setAppTitle] = useState<string | null>(null);
+  const [showThreadsHistory, setShowThreadsHistory] = useState<boolean | null>(
+    null
+  );
   const [configResolved, setConfigResolved] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
@@ -231,6 +243,7 @@ function HomePageContent() {
 
       const title = resolveAppTitle(fileCfg, envCfg);
       setAppTitle(title);
+      setShowThreadsHistory(resolveShowThreadsHistory(fileCfg, envCfg));
 
       const savedConfig = getConfig();
       if (savedConfig) {
@@ -281,7 +294,7 @@ function HomePageContent() {
   const langsmithApiKey =
     config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
 
-  if (!configResolved || appTitle === null) {
+  if (!configResolved || appTitle === null || showThreadsHistory === null) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
@@ -323,6 +336,7 @@ function HomePageContent() {
       <HomePageInner
         config={config}
         appTitle={appTitle}
+        showThreadsHistory={showThreadsHistory}
         configDialogOpen={configDialogOpen}
         setConfigDialogOpen={setConfigDialogOpen}
         handleSaveConfig={handleSaveConfig}
