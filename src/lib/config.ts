@@ -11,6 +11,11 @@ export interface PublicAppConfigFile {
   deploymentUrl?: string;
   assistantId?: string;
   langsmithApiKey?: string;
+  /**
+   * When false, hides the threads sidebar and the header control to open it.
+   * Defaults to true when omitted. Override with `NEXT_PUBLIC_SHOW_THREADS_HISTORY`.
+   */
+  showThreadsHistory?: boolean;
 }
 
 export const DEFAULT_APP_TITLE = "Deep Agent UI";
@@ -25,12 +30,22 @@ export function getEnvAppConfig(): PublicAppConfigFile {
     deploymentUrl: trimOrUndefined(process.env.NEXT_PUBLIC_DEPLOYMENT_URL),
     assistantId: trimOrUndefined(process.env.NEXT_PUBLIC_ASSISTANT_ID),
     langsmithApiKey: trimOrUndefined(process.env.NEXT_PUBLIC_LANGSMITH_API_KEY),
+    showThreadsHistory: parseBoolEnv(
+      process.env.NEXT_PUBLIC_SHOW_THREADS_HISTORY
+    ),
   };
 }
 
 function trimOrUndefined(v: string | undefined): string | undefined {
   const t = v?.trim();
   return t || undefined;
+}
+
+function parseBoolEnv(v: string | undefined): boolean | undefined {
+  const t = v?.trim().toLowerCase();
+  if (t === "true" || t === "1") return true;
+  if (t === "false" || t === "0") return false;
+  return undefined;
 }
 
 /**
@@ -83,6 +98,19 @@ export function resolveAppTitle(
 ): string {
   const t = trimOrUndefined(file?.title) ?? trimOrUndefined(env.title);
   return t ?? DEFAULT_APP_TITLE;
+}
+
+export function resolveShowThreadsHistory(
+  file: PublicAppConfigFile | null,
+  env: PublicAppConfigFile
+): boolean {
+  if (file?.showThreadsHistory !== undefined) {
+    return file.showThreadsHistory;
+  }
+  if (env.showThreadsHistory !== undefined) {
+    return env.showThreadsHistory;
+  }
+  return true;
 }
 
 export function getConfig(): StandaloneConfig | null {
