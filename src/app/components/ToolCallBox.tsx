@@ -41,10 +41,6 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     const [isExpanded, setIsExpanded] = useState(
       () => !!uiComponent || !!actionRequest
     );
-    const [expandedArgs, setExpandedArgs] = useState<Record<string, boolean>>(
-      {}
-    );
-
     const { name, args, result, status } = useMemo(() => {
       return {
         name: toolCall.name || "Unknown Tool",
@@ -93,14 +89,23 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       setIsExpanded((prev) => !prev);
     }, []);
 
-    const toggleArgExpanded = useCallback((argKey: string) => {
-      setExpandedArgs((prev) => ({
-        ...prev,
-        [argKey]: !prev[argKey],
-      }));
-    }, []);
+    const argsDisplayString = useMemo(() => {
+      if (args === null || args === undefined) return "{}";
+      if (typeof args === "string") {
+        try {
+          const parsed = JSON.parse(args);
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          return args;
+        }
+      }
+      if (typeof args === "object") {
+        return JSON.stringify(args, null, 2);
+      }
+      return String(args);
+    }, [args]);
 
-    const hasContent = result || Object.keys(args).length > 0;
+    const hasContent = result || argsDisplayString !== "{}";
 
     return (
       <div
@@ -164,48 +169,16 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
               </div>
             ) : (
               <>
-                {Object.keys(args).length > 0 && (
+                {argsDisplayString !== "{}" ? (
                   <div className="mt-4">
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Arguments
                     </h4>
-                    <div className="space-y-2">
-                      {Object.entries(args).map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="rounded-sm border border-border"
-                        >
-                          <button
-                            onClick={() => toggleArgExpanded(key)}
-                            className="flex w-full items-center justify-between bg-muted/30 p-2 text-left text-xs font-medium transition-colors hover:bg-muted/50"
-                          >
-                            <span className="font-mono">{key}</span>
-                            {expandedArgs[key] ? (
-                              <ChevronUp
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                            ) : (
-                              <ChevronDown
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                            )}
-                          </button>
-                          {expandedArgs[key] && (
-                            <div className="border-t border-border bg-muted/20 p-2">
-                              <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs leading-6 text-foreground">
-                                {typeof value === "string"
-                                  ? value
-                                  : JSON.stringify(value, null, 2)}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-muted/40 p-2 font-mono text-xs leading-7 text-foreground">
+                      {argsDisplayString}
+                    </pre>
                   </div>
-                )}
+                ) : null}
                 {result && (
                   <div className="mt-4">
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

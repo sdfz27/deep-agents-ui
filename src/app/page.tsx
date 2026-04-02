@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
-import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
+import {
+  getConfig,
+  getEnvAppConfig,
+  loadPublicAppConfig,
+  mergeDeploymentConfig,
+  resolveAppTitle,
+  saveConfig,
+  StandaloneConfig,
+} from "@/lib/config";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
@@ -19,6 +27,7 @@ import { ChatInterface } from "@/app/components/ChatInterface";
 
 interface HomePageInnerProps {
   config: StandaloneConfig;
+  appTitle: string;
   configDialogOpen: boolean;
   setConfigDialogOpen: (open: boolean) => void;
   handleSaveConfig: (config: StandaloneConfig) => void;
@@ -26,6 +35,7 @@ interface HomePageInnerProps {
 
 function HomePageInner({
   config,
+  appTitle,
   configDialogOpen,
   setConfigDialogOpen,
   handleSaveConfig,
@@ -113,7 +123,7 @@ function HomePageInner({
       <div className="flex h-screen flex-col">
         <header className="flex h-16 items-center justify-between border-b border-border px-6">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">Deep Agent UI</h1>
+            <h1 className="text-xl font-semibold">{appTitle}</h1>
             {!sidebar && (
               <Button
                 variant="ghost"
@@ -205,22 +215,56 @@ function HomePageInner({
 
 function HomePageContent() {
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
+  const [appTitle, setAppTitle] = useState<string | null>(null);
+  const [configResolved, setConfigResolved] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
 
-  // On mount, check for saved config, otherwise show config dialog
+  // Resolve localStorage, optional public JSON, and env; skip the dialog when backend is preset
   useEffect(() => {
-    const savedConfig = getConfig();
-    if (savedConfig) {
-      setConfig(savedConfig);
-      if (!assistantId) {
-        setAssistantId(savedConfig.assistantId);
+    let cancelled = false;
+
+    (async () => {
+      const envCfg = getEnvAppConfig();
+      const fileCfg = await loadPublicAppConfig();
+      if (cancelled) return;
+
+      const title = resolveAppTitle(fileCfg, envCfg);
+      setAppTitle(title);
+
+      const savedConfig = getConfig();
+      if (savedConfig) {
+        setConfig(savedConfig);
+        if (!assistantId) {
+          setAssistantId(savedConfig.assistantId);
+        }
+        setConfigResolved(true);
+        return;
       }
-    } else {
-      setConfigDialogOpen(true);
-    }
+
+      const preset = mergeDeploymentConfig(fileCfg, envCfg);
+      if (preset) {
+        setConfig(preset);
+        if (!assistantId) {
+          setAssistantId(preset.assistantId);
+        }
+      } else {
+        setConfigDialogOpen(true);
+      }
+      setConfigResolved(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (appTitle) {
+      document.title = appTitle;
+    }
+  }, [appTitle]);
 
   // If config changes, update the assistantId
   useEffect(() => {
@@ -237,6 +281,14 @@ function HomePageContent() {
   const langsmithApiKey =
     config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
 
+  if (!configResolved || appTitle === null) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
   if (!config) {
     return (
       <>
@@ -247,7 +299,7 @@ function HomePageContent() {
         />
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Welcome to Standalone Chat</h1>
+            <h1 className="text-2xl font-bold">Welcome to {appTitle}</h1>
             <p className="mt-2 text-muted-foreground">
               Configure your deployment to get started
             </p>
@@ -270,6 +322,7 @@ function HomePageContent() {
     >
       <HomePageInner
         config={config}
+        appTitle={appTitle}
         configDialogOpen={configDialogOpen}
         setConfigDialogOpen={setConfigDialogOpen}
         handleSaveConfig={handleSaveConfig}

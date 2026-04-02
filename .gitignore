@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Optional runtime config (see public/deep-agents-ui.config.example.json)
+public/deep-agents-ui.config.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
