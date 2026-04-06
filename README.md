@@ -103,6 +103,42 @@ Use `NEXT_PUBLIC_SHOW_THREADS_HISTORY` with `true` or `false` (or `1` / `0`) whe
 
 **Note:** Values saved with **Settings** in the UI are stored in the browser (local storage) and take **precedence** over both the public config file and these environment variables on later visits.
 
+### Optional: OAuth2 (authorization code)
+
+When enabled, users must sign in before using the app. The UI decodes **JWT claims** from the token you choose (`id_token` or `access_token`), shows the **username** claim in the header, and sends the **user id** claim on every LangGraph request using a **configurable header name** (for example `X-User-Id`). The token exchange runs through a same-origin API route (`POST /api/oauth/token`) so the browser does not call the token URL directly (avoids many CORS issues).
+
+- **Redirect URI (fixed):** register `{origin}/oauth/callback` with your identity provider (for local dev, `http://localhost:3000/oauth/callback`).
+- **Public client:** only `client_id` is sent (no client secret in the app). PKCE is not implemented; your IdP must allow authorization code without PKCE if you use this mode.
+- **Session:** tokens and profile fields are stored in **localStorage**. When the session expires (`expires_in` from the token response and/or JWT `exp`, whichever applies earlier), the user is signed out and must sign in again.
+
+Config file keys (see `public/deep-agents-ui.config.example.json`):
+
+| Key | Meaning |
+|-----|---------|
+| `oauth2Enabled` | `true` to require login |
+| `oauthAuthorizationUrl` | Authorization endpoint |
+| `oauthTokenUrl` | Token endpoint (proxied by `/api/oauth/token`) |
+| `oauthClientId` | OAuth client id |
+| `oauthScope` | Space-separated scopes (default in example: `openid profile email`) |
+| `oauthJwtSource` | `id_token` or `access_token` — which value is parsed for claims |
+| `oauthUserIdClaim` | JWT claim for user id (sent as the configurable header) |
+| `oauthUsernameClaim` | JWT claim shown in the UI |
+| `oauthUserIdHeader` | HTTP header name for the user id on LangGraph requests |
+
+Environment variables (used when not overridden in the JSON file):
+
+```env
+NEXT_PUBLIC_OAUTH2_ENABLED="true"
+NEXT_PUBLIC_OAUTH_AUTHORIZATION_URL="https://idp.example.com/oauth2/authorize"
+NEXT_PUBLIC_OAUTH_TOKEN_URL="https://idp.example.com/oauth2/token"
+NEXT_PUBLIC_OAUTH_CLIENT_ID="your-client-id"
+NEXT_PUBLIC_OAUTH_SCOPE="openid profile email"
+NEXT_PUBLIC_OAUTH_JWT_SOURCE="id_token"
+NEXT_PUBLIC_OAUTH_USER_ID_CLAIM="sub"
+NEXT_PUBLIC_OAUTH_USERNAME_CLAIM="name"
+NEXT_PUBLIC_OAUTH_USER_ID_HEADER="X-User-Id"
+```
+
 ### Usage
 
 You can run your Deep Agents in Debug Mode, which will execute the agent step by step. This will allow you to re-run the specific steps of the agent. This is intended to be used alongside the optimizer.

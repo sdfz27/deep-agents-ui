@@ -13,22 +13,31 @@ interface ClientProviderProps {
   children: ReactNode;
   deploymentUrl: string;
   apiKey: string;
+  /** When set with userId, sent on every LangGraph request (e.g. OAuth user id). */
+  userIdHeaderName?: string;
+  userId?: string;
 }
 
 export function ClientProvider({
   children,
   deploymentUrl,
   apiKey,
+  userIdHeaderName,
+  userId,
 }: ClientProviderProps) {
   const client = useMemo(() => {
+    const defaultHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Api-Key": apiKey,
+    };
+    if (userIdHeaderName && userId) {
+      defaultHeaders[userIdHeaderName] = userId;
+    }
     return new Client({
       apiUrl: deploymentUrl,
-      defaultHeaders: {
-        "Content-Type": "application/json",
-        "X-Api-Key": apiKey,
-      },
+      defaultHeaders,
     });
-  }, [deploymentUrl, apiKey]);
+  }, [deploymentUrl, apiKey, userIdHeaderName, userId]);
 
   const value = useMemo(() => ({ client }), [client]);
 

@@ -8,10 +8,18 @@ import {
   loadPublicAppConfig,
   mergeDeploymentConfig,
   resolveAppTitle,
+  resolveOAuth2Settings,
   resolveShowThreadsHistory,
   saveConfig,
   StandaloneConfig,
 } from "@/lib/config";
+import type { OAuth2Resolution } from "@/lib/config";
+import { startOAuthLogin } from "@/lib/oauth-login";
+import {
+  clearOAuthSessionStorage,
+  loadPersistedOAuthSession,
+  type PersistedOAuthSession,
+} from "@/lib/oauth-session";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
@@ -33,6 +41,8 @@ interface HomePageInnerProps {
   configDialogOpen: boolean;
   setConfigDialogOpen: (open: boolean) => void;
   handleSaveConfig: (config: StandaloneConfig) => void;
+  oauthDisplayLabel?: string;
+  onOAuthSignOut?: () => void;
 }
 
 function HomePageInner({
@@ -42,6 +52,8 @@ function HomePageInner({
   configDialogOpen,
   setConfigDialogOpen,
   handleSaveConfig,
+  oauthDisplayLabel,
+  onOAuthSignOut,
 }: HomePageInnerProps) {
   const client = useClient();
   const [threadId, setThreadId] = useQueryState("threadId");
@@ -155,6 +167,20 @@ function HomePageInner({
               <span className="font-medium">Assistant:</span>{" "}
               {config.assistantId}
             </div>
+            {oauthDisplayLabel && (
+              <span className="max-w-[12rem] truncate text-sm text-muted-foreground">
+                {oauthDisplayLabel}
+              </span>
+            )}
+            {onOAuthSignOut && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOAuthSignOut}
+              >
+                Sign out
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -230,6 +256,10 @@ function HomePageContent() {
   );
   const [configResolved, setConfigResolved] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [oauthResolution, setOAuthResolution] =
+    useState<OAuth2Resolution | null>(null);
+  const [oauthSession, setOAuthSession] =
+    useState<PersistedOAuthSession | null>(null);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
 
   // Resolve localStorage, optional public JSON, and env; skip the dialog when backend is preset
@@ -244,6 +274,8 @@ function HomePageContent() {
       const title = resolveAppTitle(fileCfg, envCfg);
       setAppTitle(title);
       setShowThreadsHistory(resolveShowThreadsHistory(fileCfg, envCfg));
+      const oauthRes = resolveOAuth2Settings(fileCfg, envCfg);
+      setOAuthResolution(oauthRes);
 
       const savedConfig = getConfig();
       if (savedConfig) {
@@ -274,6 +306,14 @@ function HomePageContent() {
   }, []);
 
   useEffect(() => {
+    if (!oauthResolution?.enabled || !oauthResolution.config) {
+      setOAuthSession(null);
+      return;
+    }
+    setOAuthSession(loadPersistedOAuthSession());
+  }, [oauthResolution]);
+
+  useEffect(() => {
     if (appTitle) {
       document.title = appTitle;
     }
@@ -291,13 +331,40 @@ function HomePageContent() {
     setConfig(newConfig);
   }, []);
 
+  const handleOAuthSignOut = useCallback(() => {
+    clearOAuthSessionStorage();
+    setOAuthSession(null);
+  }, []);
+
   const langsmithApiKey =
     config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
 
-  if (!configResolved || appTitle === null || showThreadsHistory === null) {
+  if (
+    !configResolved ||
+    appTitle === null ||
+    showThreadsHistory === null ||
+    oauthResolution === null
+  ) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (oauthResolution.enabled && oauthResolution.missingKeys.length > 0) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 p-8 text-center">
+        <h1 className="text-xl font-semibold">OAuth2 is misconfigured</h1>
+        <p className="max-w-md text-muted-foreground">
+          <code className="rounded bg-muted px-1 py-0.5">oauth2Enabled</code>{" "}
+          is true, but these required settings are missing or empty:{" "}
+          {oauthResolution.missingKeys.join(", ")}. Fix{" "}
+          <code className="rounded bg-muted px-1 py-0.5">
+            deep-agents-ui.config.json
+          </code>{" "}
+          or environment variables, then reload.
+        </p>
       </div>
     );
   }
@@ -328,10 +395,43 @@ function HomePageContent() {
     );
   }
 
+  if (
+    oauthResolution.enabled &&
+    oauthResolution.config &&
+    !oauthSession
+  ) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 p-8">
+        <h1 className="text-2xl font-bold">{appTitle}</h1>
+        <p className="text-muted-foreground">Sign in to continue.</p>
+        <Button
+          onClick={() => {
+            if (oauthResolution.config) {
+              startOAuthLogin(oauthResolution.config);
+            }
+          }}
+          className="mt-2"
+        >
+          Sign in
+        </Button>
+      </div>
+    );
+  }
+
+  const oauthDisplayLabel = oauthSession
+    ? oauthSession.username.trim() || oauthSession.userId
+    : undefined;
+
   return (
     <ClientProvider
       deploymentUrl={config.deploymentUrl}
       apiKey={langsmithApiKey}
+      userIdHeaderName={
+        oauthSession && oauthResolution.config
+          ? oauthResolution.config.userIdHeader
+          : undefined
+      }
+      userId={oauthSession?.userId}
     >
       <HomePageInner
         config={config}
@@ -340,6 +440,12 @@ function HomePageContent() {
         configDialogOpen={configDialogOpen}
         setConfigDialogOpen={setConfigDialogOpen}
         handleSaveConfig={handleSaveConfig}
+        oauthDisplayLabel={oauthDisplayLabel}
+        onOAuthSignOut={
+          oauthResolution.enabled && oauthResolution.config
+            ? handleOAuthSignOut
+            : undefined
+        }
       />
     </ClientProvider>
   );

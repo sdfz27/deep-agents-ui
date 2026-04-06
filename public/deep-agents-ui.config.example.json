@@ -3,5 +3,14 @@
   "deploymentUrl": "http://127.0.0.1:2025",
   "assistantId": "support",
   "langsmithApiKey": "",
-  "showThreadsHistory": true
+  "showThreadsHistory": true,
+  "oauth2Enabled": false,
+  "oauthAuthorizationUrl": "",
+  "oauthTokenUrl": "",
+  "oauthClientId": "",
+  "oauthScope": "openid profile email",
+  "oauthJwtSource": "id_token",
+  "oauthUserIdClaim": "sub",
+  "oauthUsernameClaim": "name",
+  "oauthUserIdHeader": "X-User-Id"
 }
