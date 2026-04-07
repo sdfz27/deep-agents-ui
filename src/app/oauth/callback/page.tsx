@@ -72,6 +72,9 @@ function CallbackInner() {
             redirect_uri,
             oauth_token_url: oauth.config.tokenUrl,
             client_id: oauth.config.clientId,
+            ...(oauth.config.clientSecret
+              ? { client_secret: oauth.config.clientSecret }
+              : {}),
           }),
         });
       } catch {

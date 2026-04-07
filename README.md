@@ -108,7 +108,7 @@ Use `NEXT_PUBLIC_SHOW_THREADS_HISTORY` with `true` or `false` (or `1` / `0`) whe
 When enabled, users must sign in before using the app. The UI decodes **JWT claims** from the token you choose (`id_token` or `access_token`), shows the **username** claim in the header, and sends the **user id** claim on every LangGraph request using a **configurable header name** (for example `X-User-Id`). The token exchange runs through a same-origin API route (`POST /api/oauth/token`) so the browser does not call the token URL directly (avoids many CORS issues).
 
 - **Redirect URI (fixed):** register `{origin}/oauth/callback` with your identity provider (for local dev, `http://localhost:3000/oauth/callback`).
-- **Public client:** only `client_id` is sent (no client secret in the app). PKCE is not implemented; your IdP must allow authorization code without PKCE if you use this mode.
+- **Client authentication:** By default only `client_id` is used. If you set a **client secret** (see below), the token request includes `client_secret` in the **form body** and an **`Authorization: Basic`** header (`base64(client_id:client_secret)`). Prefer **`OAUTH_CLIENT_SECRET`** on the server (not exposed to the browser); it overrides a secret sent from the client. PKCE is not implemented; your IdP must allow authorization code without PKCE if you use public-client mode.
 - **Session:** tokens and profile fields are stored in **localStorage**. When the session expires (`expires_in` from the token response and/or JWT `exp`, whichever applies earlier), the user is signed out and must sign in again.
 
 Config file keys (see `public/deep-agents-ui.config.example.json`):
@@ -119,6 +119,7 @@ Config file keys (see `public/deep-agents-ui.config.example.json`):
 | `oauthAuthorizationUrl` | Authorization endpoint |
 | `oauthTokenUrl` | Token endpoint (proxied by `/api/oauth/token`) |
 | `oauthClientId` | OAuth client id |
+| `oauthClientSecret` | Optional. If set, sent to the token endpoint (prefer server-only `OAUTH_CLIENT_SECRET` instead of putting secrets in public JSON) |
 | `oauthScope` | Space-separated scopes (default in example: `openid profile email`) |
 | `oauthJwtSource` | `id_token` or `access_token` — which value is parsed for claims |
 | `oauthUserIdClaim` | JWT claim for user id (sent as the configurable header) |
@@ -132,11 +133,18 @@ NEXT_PUBLIC_OAUTH2_ENABLED="true"
 NEXT_PUBLIC_OAUTH_AUTHORIZATION_URL="https://idp.example.com/oauth2/authorize"
 NEXT_PUBLIC_OAUTH_TOKEN_URL="https://idp.example.com/oauth2/token"
 NEXT_PUBLIC_OAUTH_CLIENT_ID="your-client-id"
+NEXT_PUBLIC_OAUTH_CLIENT_SECRET="only-if-you-accept-secret-in-the-bundle"
 NEXT_PUBLIC_OAUTH_SCOPE="openid profile email"
 NEXT_PUBLIC_OAUTH_JWT_SOURCE="id_token"
 NEXT_PUBLIC_OAUTH_USER_ID_CLAIM="sub"
 NEXT_PUBLIC_OAUTH_USERNAME_CLAIM="name"
 NEXT_PUBLIC_OAUTH_USER_ID_HEADER="X-User-Id"
+```
+
+Server-only (recommended for client secrets; read by `POST /api/oauth/token` only, overrides `NEXT_PUBLIC_OAUTH_CLIENT_SECRET` / JSON when set):
+
+```env
+OAUTH_CLIENT_SECRET="your-client-secret"
 ```
 
 ### Usage

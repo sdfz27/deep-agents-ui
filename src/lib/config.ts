@@ -26,6 +26,8 @@ export interface PublicAppConfigFile {
   oauthUserIdClaim?: string;
   oauthUsernameClaim?: string;
   oauthUserIdHeader?: string;
+  /** Optional. Prefer server env `OAUTH_CLIENT_SECRET` so the secret is not in the browser bundle. */
+  oauthClientSecret?: string;
 }
 
 /** Resolved OAuth2 settings when enabled and all required fields are present. */
@@ -38,6 +40,8 @@ export interface ResolvedOAuth2Config {
   userIdClaim: string;
   usernameClaim: string;
   userIdHeader: string;
+  /** Present when set via public config or `NEXT_PUBLIC_OAUTH_CLIENT_SECRET`. */
+  clientSecret?: string;
 }
 
 export interface OAuth2Resolution {
@@ -78,6 +82,9 @@ export function getEnvAppConfig(): PublicAppConfigFile {
     ),
     oauthUserIdHeader: trimOrUndefined(
       process.env.NEXT_PUBLIC_OAUTH_USER_ID_HEADER
+    ),
+    oauthClientSecret: trimOrUndefined(
+      process.env.NEXT_PUBLIC_OAUTH_CLIENT_SECRET
     ),
   };
 }
@@ -222,6 +229,10 @@ export function resolveOAuth2Settings(
   const userIdHeader =
     pickNonEmptyString(file?.oauthUserIdHeader, env.oauthUserIdHeader) ||
     "X-User-Id";
+  const clientSecret = pickNonEmptyString(
+    file?.oauthClientSecret,
+    env.oauthClientSecret
+  );
 
   if (missingKeys.length > 0) {
     return { enabled: true, config: null, missingKeys };
@@ -238,6 +249,7 @@ export function resolveOAuth2Settings(
       userIdClaim,
       usernameClaim,
       userIdHeader,
+      ...(clientSecret ? { clientSecret } : {}),
     },
     missingKeys: [],
   };

@@ -5,6 +5,8 @@ interface TokenRequestBody {
   redirect_uri?: string;
   oauth_token_url?: string;
   client_id?: string;
+  /** Optional; server env `OAUTH_CLIENT_SECRET` overrides when set. */
+  client_secret?: string;
 }
 
 export async function POST(req: Request) {
@@ -21,6 +23,12 @@ export async function POST(req: Request) {
   const oauth_token_url =
     typeof body.oauth_token_url === "string" ? body.oauth_token_url : "";
   const client_id = typeof body.client_id === "string" ? body.client_id : "";
+  const client_secret_from_body =
+    typeof body.client_secret === "string" ? body.client_secret.trim() : "";
+  const client_secret =
+    (typeof process.env.OAUTH_CLIENT_SECRET === "string"
+      ? process.env.OAUTH_CLIENT_SECRET.trim()
+      : "") || client_secret_from_body;
 
   if (!code || !redirect_uri || !oauth_token_url || !client_id) {
     return NextResponse.json(
@@ -38,15 +46,27 @@ export async function POST(req: Request) {
   params.set("code", code);
   params.set("client_id", client_id);
   params.set("redirect_uri", redirect_uri);
+  if (client_secret) {
+    params.set("client_secret", client_secret);
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+    Accept: "application/json",
+  };
+  if (client_secret) {
+    const basic = Buffer.from(
+      `${client_id}:${client_secret}`,
+      "utf8"
+    ).toString("base64");
+    headers.Authorization = `Basic ${basic}`;
+  }
 
   let upstream: Response;
   try {
     upstream = await fetch(oauth_token_url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
+      headers,
       body: params.toString(),
     });
   } catch (e) {
