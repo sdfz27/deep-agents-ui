@@ -13,5 +13,8 @@
   "oauthJwtSource": "id_token",
   "oauthUserIdClaim": "sub",
   "oauthUsernameClaim": "name",
-  "oauthUserIdHeader": "X-User-Id"
+  "oauthUserIdHeader": "X-User-Id",
+  "maxConversationRounds": 10,
+  "conversationLimitMessage": "This conversation has reached the maximum number of exchanges for this thread.",
+  "threadInitializationMessage": "You are starting a new support session. Greet the user briefly."
 }

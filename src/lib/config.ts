@@ -28,6 +28,18 @@ export interface PublicAppConfigFile {
   oauthUserIdHeader?: string;
   /** Optional. Prefer server env `OAUTH_CLIENT_SECRET` so the secret is not in the browser bundle. */
   oauthClientSecret?: string;
+  /**
+   * Max completed Q&A rounds per thread (one user message + assistant reply = 1 round).
+   * Omitted or non-positive = no limit.
+   */
+  maxConversationRounds?: number;
+  /** Shown near the composer when the round limit is reached. */
+  conversationLimitMessage?: string;
+  /**
+   * Sent automatically when a new thread starts (no thread id). Not shown in the UI.
+   * Omitted or empty = disabled.
+   */
+  threadInitializationMessage?: string;
 }
 
 /** Resolved OAuth2 settings when enabled and all required fields are present. */
@@ -86,6 +98,15 @@ export function getEnvAppConfig(): PublicAppConfigFile {
     oauthClientSecret: trimOrUndefined(
       process.env.NEXT_PUBLIC_OAUTH_CLIENT_SECRET
     ),
+    maxConversationRounds: parsePositiveIntEnv(
+      process.env.NEXT_PUBLIC_MAX_CONVERSATION_ROUNDS
+    ),
+    conversationLimitMessage: trimOrUndefined(
+      process.env.NEXT_PUBLIC_CONVERSATION_LIMIT_MESSAGE
+    ),
+    threadInitializationMessage: trimOrUndefined(
+      process.env.NEXT_PUBLIC_THREAD_INITIALIZATION_MESSAGE
+    ),
   };
 }
 
@@ -107,6 +128,14 @@ function parseBoolEnv(v: string | undefined): boolean | undefined {
   if (t === "true" || t === "1") return true;
   if (t === "false" || t === "0") return false;
   return undefined;
+}
+
+function parsePositiveIntEnv(v: string | undefined): number | undefined {
+  const t = v?.trim();
+  if (!t) return undefined;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return Math.floor(n);
 }
 
 /**
@@ -172,6 +201,48 @@ export function resolveShowThreadsHistory(
     return env.showThreadsHistory;
   }
   return true;
+}
+
+const DEFAULT_CONVERSATION_LIMIT_MESSAGE =
+  "This conversation has reached the maximum number of exchanges for this thread.";
+
+/**
+ * Max conversation rounds; undefined means no limit.
+ * File wins when set to a positive integer.
+ */
+export function resolveMaxConversationRounds(
+  file: PublicAppConfigFile | null,
+  env: PublicAppConfigFile
+): number | undefined {
+  const fromFile = file?.maxConversationRounds;
+  if (typeof fromFile === "number" && Number.isFinite(fromFile) && fromFile > 0) {
+    return Math.floor(fromFile);
+  }
+  const fromEnv = env.maxConversationRounds;
+  if (typeof fromEnv === "number" && Number.isFinite(fromEnv) && fromEnv > 0) {
+    return Math.floor(fromEnv);
+  }
+  return undefined;
+}
+
+export function resolveConversationLimitMessage(
+  file: PublicAppConfigFile | null,
+  env: PublicAppConfigFile
+): string {
+  const custom =
+    trimOrUndefined(file?.conversationLimitMessage) ??
+    trimOrUndefined(env.conversationLimitMessage);
+  return custom ?? DEFAULT_CONVERSATION_LIMIT_MESSAGE;
+}
+
+/** Text sent on new thread; empty string = off. File wins when non-empty. */
+export function resolveThreadInitializationMessage(
+  file: PublicAppConfigFile | null,
+  env: PublicAppConfigFile
+): string {
+  const f = trimOrUndefined(file?.threadInitializationMessage);
+  if (f) return f;
+  return trimOrUndefined(env.threadInitializationMessage) ?? "";
 }
 
 function pickNonEmptyString(

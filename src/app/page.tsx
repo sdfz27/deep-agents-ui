@@ -8,11 +8,15 @@ import {
   loadPublicAppConfig,
   mergeDeploymentConfig,
   resolveAppTitle,
+  resolveConversationLimitMessage,
+  resolveMaxConversationRounds,
   resolveOAuth2Settings,
   resolveShowThreadsHistory,
+  resolveThreadInitializationMessage,
   saveConfig,
   StandaloneConfig,
 } from "@/lib/config";
+import type { ChatThreadOptions } from "@/app/hooks/useChat";
 import type { OAuth2Resolution } from "@/lib/config";
 import { startOAuthLogin } from "@/lib/oauth-login";
 import {
@@ -43,6 +47,8 @@ interface HomePageInnerProps {
   handleSaveConfig: (config: StandaloneConfig) => void;
   oauthDisplayLabel?: string;
   onOAuthSignOut?: () => void;
+  chatThreadOptions: ChatThreadOptions;
+  conversationLimitMessage: string;
 }
 
 function HomePageInner({
@@ -54,6 +60,8 @@ function HomePageInner({
   handleSaveConfig,
   oauthDisplayLabel,
   onOAuthSignOut,
+  chatThreadOptions,
+  conversationLimitMessage,
 }: HomePageInnerProps) {
   const client = useClient();
   const [threadId, setThreadId] = useQueryState("threadId");
@@ -237,8 +245,12 @@ function HomePageInner({
               <ChatProvider
                 activeAssistant={assistant}
                 onHistoryRevalidate={() => mutateThreads?.()}
+                chatThreadOptions={chatThreadOptions}
               >
-                <ChatInterface assistant={assistant} />
+                <ChatInterface
+                  assistant={assistant}
+                  conversationLimitMessage={conversationLimitMessage}
+                />
               </ChatProvider>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -254,6 +266,11 @@ function HomePageContent() {
   const [showThreadsHistory, setShowThreadsHistory] = useState<boolean | null>(
     null
   );
+  const [chatThreadOptions, setChatThreadOptions] =
+    useState<ChatThreadOptions | null>(null);
+  const [conversationLimitMessage, setConversationLimitMessage] = useState<
+    string | null
+  >(null);
   const [configResolved, setConfigResolved] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [oauthResolution, setOAuthResolution] =
@@ -274,6 +291,14 @@ function HomePageContent() {
       const title = resolveAppTitle(fileCfg, envCfg);
       setAppTitle(title);
       setShowThreadsHistory(resolveShowThreadsHistory(fileCfg, envCfg));
+      setChatThreadOptions({
+        maxConversationRounds: resolveMaxConversationRounds(fileCfg, envCfg),
+        threadInitializationMessage:
+          resolveThreadInitializationMessage(fileCfg, envCfg),
+      });
+      setConversationLimitMessage(
+        resolveConversationLimitMessage(fileCfg, envCfg)
+      );
       const oauthRes = resolveOAuth2Settings(fileCfg, envCfg);
       setOAuthResolution(oauthRes);
 
@@ -343,7 +368,9 @@ function HomePageContent() {
     !configResolved ||
     appTitle === null ||
     showThreadsHistory === null ||
-    oauthResolution === null
+    oauthResolution === null ||
+    chatThreadOptions === null ||
+    conversationLimitMessage === null
   ) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -446,6 +473,8 @@ function HomePageContent() {
             ? handleOAuthSignOut
             : undefined
         }
+        chatThreadOptions={chatThreadOptions}
+        conversationLimitMessage={conversationLimitMessage}
       />
     </ClientProvider>
   );

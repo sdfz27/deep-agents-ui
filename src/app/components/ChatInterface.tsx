@@ -33,6 +33,7 @@ import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
+  conversationLimitMessage: string;
 }
 
 const getStatusIcon = (status: TodoItem["status"], className?: string) => {
@@ -61,7 +62,8 @@ const getStatusIcon = (status: TodoItem["status"], className?: string) => {
   }
 };
 
-export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
+export const ChatInterface = React.memo<ChatInterfaceProps>(
+  ({ assistant, conversationLimitMessage }) => {
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -82,9 +84,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
     sendMessage,
     stopStream,
     resumeInterrupt,
+    isConversationRoundLimitReached,
+    isMessageHiddenFromUi,
   } = useChatContext();
 
   const submitDisabled = isLoading || !assistant;
+  const sendBlockedByRoundLimit =
+    isConversationRoundLimitReached && !isLoading;
 
   const handleSubmit = useCallback(
     (e?: FormEvent) => {
@@ -96,7 +102,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
       sendMessage(messageText);
       setInput("");
     },
-    [input, isLoading, sendMessage, setInput, submitDisabled]
+    [
+      input,
+      isLoading,
+      sendMessage,
+      setInput,
+      submitDisabled,
+      isConversationRoundLimitReached,
+    ]
   );
 
   const handleKeyDown = useCallback(
@@ -110,6 +123,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
     [handleSubmit, submitDisabled]
   );
 
+  const messagesForDisplay = useMemo(
+    () => messages.filter((m) => !isMessageHiddenFromUi(m)),
+    [messages, isMessageHiddenFromUi]
+  );
+
   // TODO: can we make this part of the hook?
   const processedMessages = useMemo(() => {
     /*
@@ -121,7 +139,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
       string,
       { message: Message; toolCalls: ToolCall[] }
     >();
-    messages.forEach((message: Message) => {
+    messagesForDisplay.forEach((message: Message) => {
       if (message.type === "ai") {
         const toolCallsInMessage: Array<{
           id?: string;
@@ -213,7 +231,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
         showAvatar: data.message.type !== prevMessage?.type,
       };
     });
-  }, [messages, interrupt]);
+  }, [messagesForDisplay, interrupt]);
 
   const groupedTodos = {
     in_progress: todos.filter((t) => t.status === "in_progress"),
@@ -504,13 +522,25 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
             onSubmit={handleSubmit}
             className="flex flex-col"
           >
+            {sendBlockedByRoundLimit && (
+              <p className="border-b border-border px-[18px] py-2 text-sm text-muted-foreground">
+                {conversationLimitMessage}
+              </p>
+            )}
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isLoading ? "Running..." : "Write your message..."}
-              className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-sm leading-7 text-primary outline-none placeholder:text-tertiary"
+              placeholder={
+                sendBlockedByRoundLimit
+                  ? "Conversation limit reached"
+                  : isLoading
+                    ? "Running..."
+                    : "Write your message..."
+              }
+              disabled={sendBlockedByRoundLimit}
+              className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-sm leading-7 text-primary outline-none placeholder:text-tertiary disabled:cursor-not-allowed disabled:opacity-60"
               rows={1}
             />
             <div className="flex justify-between gap-2 p-3">
@@ -519,7 +549,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
                   type={isLoading ? "button" : "submit"}
                   variant={isLoading ? "destructive" : "default"}
                   onClick={isLoading ? stopStream : handleSubmit}
-                  disabled={!isLoading && (submitDisabled || !input.trim())}
+                  disabled={
+                    !isLoading &&
+                    (submitDisabled ||
+                      sendBlockedByRoundLimit ||
+                      !input.trim())
+                  }
                 >
                   {isLoading ? (
                     <>
@@ -540,6 +575,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
       </div>
     </div>
   );
-});
+  }
+);
 
 ChatInterface.displayName = "ChatInterface";
