@@ -82,6 +82,9 @@ You can set the **app title** and **backend** (LangGraph deployment URL, assista
    - **`title`** — Shown in the page header, welcome screen, and browser tab title (default: `Deep Agent UI`).
    - **`langsmithApiKey`** — Same role as in the settings dialog; omit or leave empty if not needed.
    - **`showThreadsHistory`** — When `false`, hides the **Threads** button and the threads sidebar (default: `true` when omitted). Set to `false` if you do not want users browsing past conversation threads in the UI.
+   - **`maxConversationRounds`** — Maximum number of completed **Q&A rounds** per thread (one user message plus at least one assistant reply = one round). Omit, set to `0`, or use a non-positive value for **no limit**. When the limit is reached, the send control is disabled and a message is shown in the composer area.
+   - **`conversationLimitMessage`** — Text shown above the composer when `maxConversationRounds` is reached (optional; a default English message is used if omitted).
+   - **`threadInitializationMessage`** — If non-empty, this string is sent automatically as a **human** message when the user starts a **new** thread (no `threadId`), so your graph can run setup logic. It is **not** shown in the chat transcript. Omit or use `""` to disable.
 
 The app fetches `/deep-agents-ui.config.json` when the page loads. The real file is listed in `.gitignore` so you can keep machine- or deployment-specific values out of git; the example file stays in the repo as a template.
 
@@ -97,11 +100,60 @@ NEXT_PUBLIC_DEPLOYMENT_URL="http://127.0.0.1:2024"
 NEXT_PUBLIC_ASSISTANT_ID="research"
 NEXT_PUBLIC_LANGSMITH_API_KEY="lsv2_xxxx"
 NEXT_PUBLIC_SHOW_THREADS_HISTORY="true"
+NEXT_PUBLIC_MAX_CONVERSATION_ROUNDS="10"
+NEXT_PUBLIC_CONVERSATION_LIMIT_MESSAGE="This conversation has reached the maximum number of exchanges for this thread."
+NEXT_PUBLIC_THREAD_INITIALIZATION_MESSAGE=""
 ```
 
 Use `NEXT_PUBLIC_SHOW_THREADS_HISTORY` with `true` or `false` (or `1` / `0`) when `showThreadsHistory` is not set in `deep-agents-ui.config.json`. If the key is omitted in both places, threads history is shown.
 
+For **thread limits and initialization**, the JSON file wins over environment variables when both set a value. `NEXT_PUBLIC_MAX_CONVERSATION_ROUNDS` must be a **positive integer** to enforce a cap; omit it or use a non-positive value for no limit. `NEXT_PUBLIC_THREAD_INITIALIZATION_MESSAGE` can be left empty to disable the hidden startup message.
+
 **Note:** Values saved with **Settings** in the UI are stored in the browser (local storage) and take **precedence** over both the public config file and these environment variables on later visits.
+
+### Optional: OAuth2 (authorization code)
+
+When enabled, users must sign in before using the app. The UI decodes **JWT claims** from the token you choose (`id_token` or `access_token`), shows the **username** claim in the header, and sends the **user id** claim on every LangGraph request using a **configurable header name** (for example `X-User-Id`). The token exchange runs through a same-origin API route (`POST /api/oauth/token`) so the browser does not call the token URL directly (avoids many CORS issues).
+
+- **Redirect URI (fixed):** register `{origin}/oauth/callback` with your identity provider (for local dev, `http://localhost:3000/oauth/callback`).
+- **Client authentication:** By default only `client_id` is used. If you set a **client secret** (see below), the token request includes `client_secret` in the **form body** and an **`Authorization: Basic`** header (`base64(client_id:client_secret)`). Prefer **`OAUTH_CLIENT_SECRET`** on the server (not exposed to the browser); it overrides a secret sent from the client. PKCE is not implemented; your IdP must allow authorization code without PKCE if you use public-client mode.
+- **Session:** tokens and profile fields are stored in **localStorage**. When the session expires (`expires_in` from the token response and/or JWT `exp`, whichever applies earlier), the user is signed out and must sign in again.
+
+Config file keys (see `public/deep-agents-ui.config.example.json`):
+
+| Key | Meaning |
+|-----|---------|
+| `oauth2Enabled` | `true` to require login |
+| `oauthAuthorizationUrl` | Authorization endpoint |
+| `oauthTokenUrl` | Token endpoint (proxied by `/api/oauth/token`) |
+| `oauthClientId` | OAuth client id |
+| `oauthClientSecret` | Optional. If set, sent to the token endpoint (prefer server-only `OAUTH_CLIENT_SECRET` instead of putting secrets in public JSON) |
+| `oauthScope` | Space-separated scopes (default in example: `openid profile email`) |
+| `oauthJwtSource` | `id_token` or `access_token` — which value is parsed for claims |
+| `oauthUserIdClaim` | JWT claim for user id (sent as the configurable header) |
+| `oauthUsernameClaim` | JWT claim shown in the UI |
+| `oauthUserIdHeader` | HTTP header name for the user id on LangGraph requests |
+
+Environment variables (used when not overridden in the JSON file):
+
+```env
+NEXT_PUBLIC_OAUTH2_ENABLED="true"
+NEXT_PUBLIC_OAUTH_AUTHORIZATION_URL="https://idp.example.com/oauth2/authorize"
+NEXT_PUBLIC_OAUTH_TOKEN_URL="https://idp.example.com/oauth2/token"
+NEXT_PUBLIC_OAUTH_CLIENT_ID="your-client-id"
+NEXT_PUBLIC_OAUTH_CLIENT_SECRET="only-if-you-accept-secret-in-the-bundle"
+NEXT_PUBLIC_OAUTH_SCOPE="openid profile email"
+NEXT_PUBLIC_OAUTH_JWT_SOURCE="id_token"
+NEXT_PUBLIC_OAUTH_USER_ID_CLAIM="sub"
+NEXT_PUBLIC_OAUTH_USERNAME_CLAIM="name"
+NEXT_PUBLIC_OAUTH_USER_ID_HEADER="X-User-Id"
+```
+
+Server-only (recommended for client secrets; read by `POST /api/oauth/token` only, overrides `NEXT_PUBLIC_OAUTH_CLIENT_SECRET` / JSON when set):
+
+```env
+OAUTH_CLIENT_SECRET="your-client-secret"
+```
 
 ### Usage
 
