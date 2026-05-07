@@ -29,6 +29,7 @@ import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
+import { useQueryState } from "nuqs";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 
 interface ChatInterfaceProps {
@@ -69,6 +70,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [input, setInput] = useState("");
+  const [threadId] = useQueryState("threadId");
   const { scrollRef, contentRef } = useStickToBottom();
 
   const {
@@ -226,9 +228,22 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const processedArray = Array.from(messageMap.values());
     return processedArray.map((data, index) => {
       const prevMessage = index > 0 ? processedArray[index - 1].message : null;
+      // Find the preceding human message for feedback context
+      let precedingHumanMessage = "";
+      if (data.message.type === "ai") {
+        for (let i = index - 1; i >= 0; i--) {
+          if (processedArray[i].message.type === "human") {
+            precedingHumanMessage = extractStringFromMessageContent(
+              processedArray[i].message
+            );
+            break;
+          }
+        }
+      }
       return {
         ...data,
         showAvatar: data.message.type !== prevMessage?.type,
+        precedingHumanMessage,
       };
     });
   }, [messagesForDisplay, interrupt]);
@@ -296,6 +311,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     stream={stream}
                     onResumeInterrupt={resumeInterrupt}
                     graphId={assistant?.graph_id}
+                    threadId={threadId ?? undefined}
+                    precedingHumanMessage={data.precedingHumanMessage}
                   />
                 );
               })}

@@ -4,6 +4,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+import { FeedbackButtons } from "@/app/components/FeedbackButtons";
 import type {
   SubAgent,
   ToolCall,
@@ -27,6 +28,10 @@ interface ChatMessageProps {
   stream?: any;
   onResumeInterrupt?: (value: any) => void;
   graphId?: string;
+  /** Thread ID for feedback logging */
+  threadId?: string;
+  /** The preceding human message content (used as the "question" for feedback) */
+  precedingHumanMessage?: string;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -40,6 +45,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     stream,
     onResumeInterrupt,
     graphId,
+    threadId,
+    precedingHumanMessage,
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
@@ -84,6 +91,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       }));
     }, []);
 
+    // Show feedback buttons for AI messages that have text content and are not loading
+    const showFeedback =
+      !isUser && hasContent && !isLoading && threadId && message.id;
+
     return (
       <div
         className={cn(
@@ -121,6 +132,14 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 ) : null}
               </div>
             </div>
+          )}
+          {showFeedback && (
+            <FeedbackButtons
+              threadId={threadId}
+              messageId={message.id!}
+              question={precedingHumanMessage || ""}
+              answer={messageContent}
+            />
           )}
           {hasToolCalls && (
             <div className="mt-4 flex w-full flex-col">
