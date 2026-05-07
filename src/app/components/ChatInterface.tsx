@@ -228,15 +228,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const processedArray = Array.from(messageMap.values());
     return processedArray.map((data, index) => {
       const prevMessage = index > 0 ? processedArray[index - 1].message : null;
-      // Find the preceding human message for feedback context
+      // Find the preceding human message and collect all tool calls since it
       let precedingHumanMessage = "";
+      const feedbackToolCalls: ToolCall[] = [];
       if (data.message.type === "ai") {
-        for (let i = index - 1; i >= 0; i--) {
+        for (let i = index; i >= 0; i--) {
           if (processedArray[i].message.type === "human") {
             precedingHumanMessage = extractStringFromMessageContent(
               processedArray[i].message
             );
             break;
+          }
+          // Collect tool calls from all AI messages in this turn
+          if (processedArray[i].message.type === "ai") {
+            feedbackToolCalls.unshift(...processedArray[i].toolCalls);
           }
         }
       }
@@ -244,6 +249,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         ...data,
         showAvatar: data.message.type !== prevMessage?.type,
         precedingHumanMessage,
+        feedbackToolCalls,
       };
     });
   }, [messagesForDisplay, interrupt]);
@@ -313,6 +319,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     graphId={assistant?.graph_id}
                     threadId={threadId ?? undefined}
                     precedingHumanMessage={data.precedingHumanMessage}
+                    feedbackToolCalls={data.feedbackToolCalls}
                   />
                 );
               })}

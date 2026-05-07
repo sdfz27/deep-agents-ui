@@ -32,6 +32,8 @@ interface ChatMessageProps {
   threadId?: string;
   /** The preceding human message content (used as the "question" for feedback) */
   precedingHumanMessage?: string;
+  /** All tool calls from AI messages between the last human message and this AI message */
+  feedbackToolCalls?: ToolCall[];
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -47,6 +49,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     graphId,
     threadId,
     precedingHumanMessage,
+    feedbackToolCalls,
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
@@ -139,7 +142,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               messageId={message.id!}
               question={precedingHumanMessage || ""}
               answer={messageContent}
-              toolCalls={toolCalls.map((tc) => ({
+              toolCalls={(feedbackToolCalls ?? toolCalls).map((tc) => ({
                 name: tc.name,
                 args: tc.args as Record<string, unknown>,
               }))}
