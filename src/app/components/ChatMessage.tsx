@@ -139,6 +139,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               messageId={message.id!}
               question={precedingHumanMessage || ""}
               answer={messageContent}
+              toolCalls={toolCalls.map((tc) => ({
+                name: tc.name,
+                args: tc.args as Record<string, unknown>,
+              }))}
             />
           )}
           {hasToolCalls && (

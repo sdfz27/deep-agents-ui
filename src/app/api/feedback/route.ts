@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 
+export interface FeedbackToolCall {
+  /** Tool name */
+  name: string;
+  /** Tool call arguments */
+  args: Record<string, unknown>;
+}
+
 export interface FeedbackRequestBody {
   /** The thread ID for the conversation */
   threadId: string;
@@ -11,6 +18,8 @@ export interface FeedbackRequestBody {
   question: string;
   /** The AI's answer (AI message content) */
   answer: string;
+  /** Tool calls involved in generating the answer */
+  toolCalls?: FeedbackToolCall[];
   /** Optional comment from the user */
   comment?: string;
 }
@@ -75,6 +84,7 @@ export async function POST(req: Request) {
     feedback,
     question,
     answer,
+    toolCalls: Array.isArray(body.toolCalls) ? body.toolCalls : undefined,
     comment: body.comment,
     timestamp: new Date().toISOString(),
   };

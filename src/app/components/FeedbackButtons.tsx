@@ -6,6 +6,11 @@ import { cn } from "@/lib/utils";
 
 export type FeedbackValue = "thumbs_up" | "thumbs_down" | null;
 
+interface FeedbackToolCall {
+  name: string;
+  args: Record<string, unknown>;
+}
+
 interface FeedbackButtonsProps {
   /** Thread ID for the current conversation */
   threadId: string;
@@ -15,10 +20,12 @@ interface FeedbackButtonsProps {
   question: string;
   /** The AI message content */
   answer: string;
+  /** Tool calls involved in generating the answer */
+  toolCalls?: FeedbackToolCall[];
 }
 
 export const FeedbackButtons = React.memo<FeedbackButtonsProps>(
-  ({ threadId, messageId, question, answer }) => {
+  ({ threadId, messageId, question, answer, toolCalls }) => {
     const [feedback, setFeedback] = useState<FeedbackValue>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,6 +52,7 @@ export const FeedbackButtons = React.memo<FeedbackButtonsProps>(
               feedback: newValue,
               question,
               answer,
+              toolCalls,
             }),
           });
 
@@ -60,7 +68,7 @@ export const FeedbackButtons = React.memo<FeedbackButtonsProps>(
           setIsSubmitting(false);
         }
       },
-      [feedback, threadId, messageId, question, answer]
+      [feedback, threadId, messageId, question, answer, toolCalls]
     );
 
     return (
