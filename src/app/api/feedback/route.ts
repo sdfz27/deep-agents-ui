@@ -26,9 +26,11 @@ export interface FeedbackRequestBody {
   comment?: string;
 }
 
-export interface FeedbackLogEntry extends FeedbackRequestBody {
+export interface FeedbackLogEntry extends Omit<FeedbackRequestBody, "userId"> {
   /** Server-generated timestamp */
   timestamp: string;
+  /** User ID – null when authentication is not enabled */
+  userId: string | null;
 }
 
 export async function POST(req: Request) {
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
     question,
     answer,
     toolCalls: Array.isArray(body.toolCalls) ? body.toolCalls : undefined,
-    userId: typeof body.userId === "string" ? body.userId : undefined,
+    userId: typeof body.userId === "string" ? body.userId : null,
     comment: body.comment,
     timestamp: new Date().toISOString(),
   };
