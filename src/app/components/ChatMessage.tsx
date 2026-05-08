@@ -34,6 +34,8 @@ interface ChatMessageProps {
   precedingHumanMessage?: string;
   /** All tool calls from AI messages between the last human message and this AI message */
   feedbackToolCalls?: ToolCall[];
+  /** User ID for feedback logging */
+  userId?: string;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -50,6 +52,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     threadId,
     precedingHumanMessage,
     feedbackToolCalls,
+    userId,
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
@@ -146,6 +149,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 name: tc.name,
                 args: tc.args as Record<string, unknown>,
               }))}
+              userId={userId}
             />
           )}
           {hasToolCalls && (

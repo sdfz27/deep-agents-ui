@@ -5,6 +5,7 @@ import { Client } from "@langchain/langgraph-sdk";
 
 interface ClientContextValue {
   client: Client;
+  userId?: string;
 }
 
 const ClientContext = createContext<ClientContextValue | null>(null);
@@ -39,7 +40,7 @@ export function ClientProvider({
     });
   }, [deploymentUrl, apiKey, userIdHeaderName, userId]);
 
-  const value = useMemo(() => ({ client }), [client]);
+  const value = useMemo(() => ({ client, userId }), [client, userId]);
 
   return (
     <ClientContext.Provider value={value}>{children}</ClientContext.Provider>
@@ -53,4 +54,9 @@ export function useClient(): Client {
     throw new Error("useClient must be used within a ClientProvider");
   }
   return context.client;
+}
+
+export function useUserId(): string | undefined {
+  const context = useContext(ClientContext);
+  return context?.userId;
 }

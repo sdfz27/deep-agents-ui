@@ -20,6 +20,8 @@ export interface FeedbackRequestBody {
   answer: string;
   /** Tool calls involved in generating the answer */
   toolCalls?: FeedbackToolCall[];
+  /** User ID of the person giving feedback */
+  userId?: string;
   /** Optional comment from the user */
   comment?: string;
 }
@@ -85,6 +87,7 @@ export async function POST(req: Request) {
     question,
     answer,
     toolCalls: Array.isArray(body.toolCalls) ? body.toolCalls : undefined,
+    userId: typeof body.userId === "string" ? body.userId : undefined,
     comment: body.comment,
     timestamp: new Date().toISOString(),
   };

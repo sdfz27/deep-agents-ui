@@ -22,10 +22,12 @@ interface FeedbackButtonsProps {
   answer: string;
   /** Tool calls involved in generating the answer */
   toolCalls?: FeedbackToolCall[];
+  /** User ID for feedback attribution */
+  userId?: string;
 }
 
 export const FeedbackButtons = React.memo<FeedbackButtonsProps>(
-  ({ threadId, messageId, question, answer, toolCalls }) => {
+  ({ threadId, messageId, question, answer, toolCalls, userId }) => {
     const [feedback, setFeedback] = useState<FeedbackValue>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,6 +55,7 @@ export const FeedbackButtons = React.memo<FeedbackButtonsProps>(
               question,
               answer,
               toolCalls,
+              userId,
             }),
           });
 
@@ -68,7 +71,7 @@ export const FeedbackButtons = React.memo<FeedbackButtonsProps>(
           setIsSubmitting(false);
         }
       },
-      [feedback, threadId, messageId, question, answer, toolCalls]
+      [feedback, threadId, messageId, question, answer, toolCalls, userId]
     );
 
     return (

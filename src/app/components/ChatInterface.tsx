@@ -27,6 +27,7 @@ import type {
 import { Assistant, Message } from "@langchain/langgraph-sdk";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { useChatContext } from "@/providers/ChatProvider";
+import { useUserId } from "@/providers/ClientProvider";
 import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { useQueryState } from "nuqs";
@@ -71,6 +72,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
 
   const [input, setInput] = useState("");
   const [threadId] = useQueryState("threadId");
+  const userId = useUserId();
   const { scrollRef, contentRef } = useStickToBottom();
 
   const {
@@ -320,6 +322,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     threadId={threadId ?? undefined}
                     precedingHumanMessage={data.precedingHumanMessage}
                     feedbackToolCalls={data.feedbackToolCalls}
+                    userId={userId}
                   />
                 );
               })}
